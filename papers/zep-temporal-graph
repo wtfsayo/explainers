@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zep Temporal Knowledge Graph Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0a;
+        }
+        .terminal {
+            font-family: 'Roboto Mono', monospace;
+        }
+        .graph-container {
+            background-image: radial-gradient(#2d3748 1px, transparent 0);
+            background-size: 40px 40px;
+        }
+        .node {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .node:hover {
+            transform: scale(1.1);
+        }
+        .link {
+            stroke-opacity: 0.6;
+            transition: stroke-width 0.3s, stroke-opacity 0.3s, stroke 0.3s;
+        }
+        .link.highlight {
+            stroke-width: 4px;
+            stroke-opacity: 1;
+        }
+        .link.invalid {
+            stroke-dasharray: 4;
+            stroke: #718096; /* gray-500 */
+        }
+        .label {
+            font-size: 10px;
+            fill: #e2e8f0; /* gray-200 */
+            pointer-events: none;
+            text-anchor: middle;
+        }
+        .tooltip {
+            position: absolute;
+            background-color: rgba(17, 24, 39, 0.9);
+            border: 1px solid #4a5568;
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 300px;
+        }
+        .toast {
+            transition: all 0.5s ease-in-out;
+        }
+        .chat-message {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .retrieval-panel {
+            transition: opacity 0.5s, max-height 0.5s ease-in-out;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .retrieval-panel.visible {
+            max-height: 500px; /* Or a large enough value */
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="text-gray-200 flex flex-col h-screen">
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-2"></div>
+
+    <!-- Header -->
+    <header class="bg-gray-900 p-3 shadow-lg z-10">
+        <div class="container mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold text-teal-400">Zep: Temporal Knowledge Graph Simulator</h1>
+                <p class="text-xs text-gray-400">
+                    An interactive explainer for the Zep agent memory architecture.
+                    <a href="https://arxiv.org/abs/2501.13956" target="_blank" class="text-teal-500 hover:underline">Read the paper</a>.
+                </p>
+            </div>
+            <button id="reset-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm">Reset Sim</button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-grow flex flex-row p-4 gap-4 overflow-hidden">
+        <!-- Left Panel: Chat & Query -->
+        <div class="w-1/3 flex flex-col gap-4">
+            <!-- Team Chat -->
+            <div class="bg-gray-900 rounded-lg shadow-md flex flex-col flex-grow overflow-hidden">
+                <h2 class="text-lg font-semibold p-4 border-b border-gray-700 text-teal-400">#project-phoenix Team Chat</h2>
+                <div id="chat-window" class="p-4 flex-grow overflow-y-auto">
+                    <!-- Chat messages appear here -->
+                </div>
+                <div class="p-4 border-t border-gray-700 bg-gray-800 rounded-b-lg">
+                     <button id="start-sim-btn" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded disabled:bg-gray-500 disabled:cursor-not-allowed">
+                        Start Automated Chat
+                    </button>
+                </div>
+            </div>
+            <!-- Query & Retrieval -->
+            <div class="bg-gray-900 p-4 rounded-lg shadow-md">
+                 <label for="query-input" class="block text-sm font-medium text-gray-300">Query Agent's Memory</label>
+                 <div class="mt-1 flex rounded-md shadow-sm">
+                    <input type="text" id="query-input" class="flex-1 block w-full rounded-none rounded-l-md bg-gray-800 border-gray-700 p-2 text-sm" placeholder="e.g., 'What is the deadline?'">
+                    <button id="query-btn" class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-700 bg-gray-600 text-sm font-medium hover:bg-gray-700">Query</button>
+                 </div>
+                 <!-- Retrieval Process Visualization -->
+                 <div id="retrieval-panel" class="retrieval-panel mt-4">
+                    <h3 class="text-md font-semibold text-teal-400 mb-2">Memory Retrieval Pipeline</h3>
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                        <div id="search-results" class="bg-gray-800 p-2 rounded">
+                            <h4 class="font-bold mb-1">1. Candidate Search</h4>
+                            <div class="space-y-1"></div>
+                        </div>
+                        <div id="rerank-results" class="bg-gray-800 p-2 rounded">
+                            <h4 class="font-bold mb-1">2. Rerank Results</h4>
+                            <div class="space-y-1"></div>
+                        </div>
+                        <div id="construct-results" class="bg-gray-800 p-2 rounded">
+                            <h4 class="font-bold mb-1">3. Final Context</h4>
+                            <div class="space-y-1 font-mono"></div>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Graph Visualization & Log -->
+        <div class="w-2/3 flex flex-col gap-4">
+            <div class="flex-grow bg-gray-900 rounded-lg shadow-md graph-container relative">
+                <svg id="graph-svg" width="100%" height="100%"></svg>
+                <div id="tooltip" class="tooltip"></div>
+                <div class="absolute top-2 left-2 text-xs text-gray-400 bg-gray-900/50 p-2 rounded">
+                    <p class="font-bold">Legend:</p>
+                    <div class="flex items-center mt-1"><div class="w-3 h-3 rounded-full bg-sky-500 mr-2"></div>Entity</div>
+                    <div class="flex items-center mt-1"><div class="w-3 h-3 rounded-full bg-amber-500 mr-2"></div>Episode</div>
+                    <div class="flex items-center mt-1"><div class="w-3 h-3 rounded-full bg-fuchsia-500 mr-2"></div>Community</div>
+                </div>
+            </div>
+            <div class="h-1/3 flex flex-col bg-black rounded-lg shadow-2xl">
+                <div class="bg-gray-800 p-2 flex items-center rounded-t-lg">
+                    <div class="flex space-x-2 pl-2">
+                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    </div>
+                    <p class="text-center flex-grow font-mono text-xs">ZEP ENGINE LOG</p>
+                </div>
+                <div id="console" class="terminal p-3 text-xs overflow-y-auto flex-grow text-gray-300"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- D3 SIMULATION SETUP ---
+        const svg = d3.select("#graph-svg");
+        const width = svg.node().getBoundingClientRect().width;
+        const height = svg.node().getBoundingClientRect().height;
+        const tooltip = d3.select("#tooltip");
+
+        let simulation = d3.forceSimulation()
+            .force("link", d3.forceLink().id(d => d.id).distance(120))
+            .force("charge", d3.forceManyBody().strength(-400))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .on("tick", ticked);
+
+        let g = svg.append("g");
+        let link = g.append("g").attr("class", "links").selectAll(".link");
+        let node = g.append("g").attr("class", "nodes").selectAll(".node");
+        let label = g.append("g").attr("class", "labels").selectAll(".label");
+
+        svg.call(d3.zoom().on("zoom", (event) => {
+            g.attr("transform", event.transform);
+        }));
+
+        // --- SIMULATION STATE & DATA ---
+        const consoleEl = document.getElementById('console');
+        const startSimBtn = document.getElementById('start-sim-btn');
+        const chatWindow = document.getElementById('chat-window');
+
+        let graph = { nodes: [], links: [] };
+        let episodeCounter = 0;
+        let simDate = new Date('2025-01-27T10:00:00Z');
+        const speakerColors = {
+            'User': 'bg-sky-600',
+            'Sarah': 'bg-fuchsia-600',
+            'Dave': 'bg-emerald-600',
+        };
+        const scriptedConversation = [
+            { speaker: "User", text: "Okay team, let's kick off Project Phoenix. The deadline is next Friday." },
+            { speaker: "Sarah", text: "Got it. I'll block my calendar." },
+            { speaker: "Dave", text: "Wait, I'm on PTO next Friday. Can we move the Phoenix deadline?" },
+            { speaker: "Sarah", text: "Good point. Let's push the deadline to two weeks from today instead." },
+            { speaker: "User", text: "Sounds good. Dave, you'll be the lead developer on Phoenix." }
+        ];
+
+        // --- CORE LOGIC ---
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = { info: 'bg-sky-500', success: 'bg-green-500', warning: 'bg-amber-500', error: 'bg-red-500' };
+            toast.className = `toast transform translate-x-full max-w-sm ${colors[type]} text-white p-3 rounded-lg shadow-lg`;
+            toast.innerHTML = `<p class="font-semibold text-sm">${message}</p>`;
+            toastContainer.appendChild(toast);
+
+            requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => toast.remove(), 500);
+            }, 4000);
+        }
+
+        function logToConsole(type, message, colorClass = 'text-gray-400') {
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span class="font-bold ${colorClass}">[${type}]</span> <span>${message}</span>`;
+            consoleEl.appendChild(logEntry);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        function addChatMessage(speaker, text) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'chat-message';
+            msgDiv.innerHTML = `
+                <div class="chat-avatar ${speakerColors[speaker] || 'bg-gray-600'}">
+                    ${speaker.charAt(0)}
+                </div>
+                <div>
+                    <p class="font-bold text-teal-400">${speaker}</p>
+                    <p class="text-sm text-gray-300">${text}</p>
+                </div>
+            `;
+            chatWindow.appendChild(msgDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function addNode(id, type, data = {}) {
+            if (!graph.nodes.find(n => n.id === id)) {
+                graph.nodes.push({ id, type, ...data });
+            }
+        }
+
+        function addLink(source, target, type, data = {}) {
+            const getSourceId = (link) => (typeof link.source === 'object' ? link.source.id : link.source);
+            const getTargetId = (link) => (typeof link.target === 'object' ? link.target.id : link.target);
+
+            const existingLink = graph.links.find(l =>
+                getSourceId(l) === source &&
+                getTargetId(l) === target &&
+                l.data.label === data.label
+            );
+
+            if (!existingLink) {
+                graph.links.push({ source, target, type, data: { ...data, isValid: true, t_valid: simDate.toISOString(), t_invalid: null } });
+            }
+        }
+
+        async function invalidateLink(factToInvalidate) {
+            const linkToUpdate = graph.links.find(l => l.data.label.includes(factToInvalidate) && l.data.isValid);
+            if (linkToUpdate) {
+                linkToUpdate.data.isValid = false;
+                linkToUpdate.data.t_invalid = simDate.toISOString();
+                showToast(`Invalidating Fact: (${linkToUpdate.source.id}) -> [${linkToUpdate.data.label}]`, 'error');
+                logToConsole('TEMPORAL', `Invalidating old fact: "${linkToUpdate.data.label}"`, 'text-red-500');
+                return true;
+            }
+            return false;
+        }
+
+        async function processMessage(msg) {
+            simDate.setDate(simDate.getDate() + 1);
+
+            showToast(`Ingesting: "${msg.text}"`, 'info');
+            logToConsole('INGEST', `New message from ${msg.speaker} at ${simDate.toDateString()}`, 'text-amber-400');
+            await delay(1500);
+
+            const episodeId = `ep${episodeCounter++}`;
+            addNode(episodeId, 'episode', { text: msg.text });
+            showToast(`Storing message as Episode ${episodeId}`, 'warning');
+            logToConsole('EPISODE', `Created episode node ${episodeId}`);
+            updateGraph();
+            await delay(1500);
+
+            const entities = new Set([msg.speaker]);
+            if (msg.text.toLowerCase().includes("phoenix")) entities.add("Project Phoenix");
+            if (msg.text.toLowerCase().includes("sarah")) entities.add("Sarah");
+            if (msg.text.toLowerCase().includes("dave")) entities.add("Dave");
+
+            for(const entity of entities) {
+                addNode(entity, 'entity', { summary: `An entity named ${entity}.` });
+                addLink(episodeId, entity, 'mentions', { label: 'mentions' });
+                showToast(`Extracted Entity: "${entity}"`, 'info');
+                logToConsole('ENTITY', `Extracted/resolved entity: ${entity}`, 'text-sky-400');
+                updateGraph();
+                await delay(1200);
+            }
+
+            if (msg.text.toLowerCase().includes("deadline is next friday")) {
+                if(await invalidateLink("deadline")) await delay(1200);
+                addNode("Next Friday", 'entity', { summary: 'A relative deadline.' });
+                addLink("Project Phoenix", "Next Friday", 'fact', { label: 'has deadline' });
+                showToast(`New Fact: (Project Phoenix) -> [has deadline]`, 'success');
+                logToConsole('FACT', `Extracted fact: (Project Phoenix) -> [has deadline] -> (Next Friday)`, 'text-lime-400');
+            }
+            if (msg.text.toLowerCase().includes("deadline to two weeks")) {
+                if(await invalidateLink("deadline")) await delay(1200);
+                addNode("Two Weeks Out", 'entity', { summary: 'A relative deadline.' });
+                addLink("Project Phoenix", "Two Weeks Out", 'fact', { label: 'has deadline' });
+                showToast(`New Fact: (Project Phoenix) -> [has deadline]`, 'success');
+                logToConsole('FACT', `Extracted fact: (Project Phoenix) -> [has deadline] -> (Two Weeks Out)`, 'text-lime-400');
+            }
+            if (msg.text.toLowerCase().includes("lead developer on phoenix")) {
+                addLink("Dave", "Project Phoenix", 'fact', { label: 'is lead dev for' });
+                showToast(`New Fact: (Dave) -> [is lead dev for]`, 'success');
+                logToConsole('FACT', `Extracted fact: (Dave) -> [is lead dev for] -> (Project Phoenix)`, 'text-lime-400');
+            }
+            updateGraph();
+            await delay(1500);
+
+            const communityId = 'Phoenix Project Community';
+            if (updateCommunities(communityId)) {
+                showToast(`Updated Community: "${communityId}"`, 'info');
+                logToConsole('COMMUNITY', `Updating '${communityId}'`, 'text-fuchsia-400');
+                updateGraph();
+                await delay(1200);
+            }
+        }
+
+        function updateCommunities(communityId) {
+            const projectEntities = graph.nodes.filter(n => n.id.includes('Project') || n.id === 'Sarah' || n.id === 'User' || n.id === 'Dave');
+            if (projectEntities.length > 1) {
+                const communityNodeExists = graph.nodes.some(n => n.id === communityId);
+                addNode(communityId, 'community', { summary: 'Community around the Phoenix project.' });
+                projectEntities.forEach(entity => {
+                    if (entity.id !== communityId) {
+                        addLink(communityId, entity.id, 'contains', { label: 'contains' });
+                    }
+                });
+                return !communityNodeExists;
+            }
+            return false;
+        }
+
+        async function queryMemory(queryText) {
+            logToConsole('QUERY', `User query: "${queryText}"`, 'text-cyan-400');
+            const retrievalPanel = document.getElementById('retrieval-panel');
+            retrievalPanel.classList.add('visible');
+
+            document.querySelector('#search-results > div').innerHTML = '';
+            document.querySelector('#rerank-results > div').innerHTML = '';
+            document.querySelector('#construct-results > div').innerHTML = '';
+            link.classed('highlight', false);
+            node.selectAll('circle').attr('stroke', 'none');
+
+            await delay(500);
+
+            showToast('Step 1: Searching for candidates...', 'info');
+            logToConsole('RETRIEVAL', 'Step 1: Candidate Search', 'text-cyan-400');
+            const queryLower = queryText.toLowerCase();
+            const candidates = graph.links.filter(l =>
+                l.type === 'fact' &&
+                (l.source.id.toLowerCase().includes(queryLower) ||
+                 l.target.id.toLowerCase().includes(queryLower) ||
+                 l.data.label.toLowerCase().includes(queryLower))
+            );
+            candidates.forEach(c => {
+                const el = document.createElement('p');
+                el.textContent = `(${c.source.id}) -> [${c.data.label}]`;
+                el.className = c.data.isValid ? 'text-gray-300' : 'text-gray-500 line-through';
+                document.querySelector('#search-results > div').appendChild(el);
+            });
+            await delay(1500);
+
+            showToast('Step 2: Reranking results...', 'info');
+            logToConsole('RETRIEVAL', 'Step 2: Reranking (by recency)', 'text-cyan-400');
+            const ranked = candidates.map(c => {
+                const lastMentioned = new Date(c.data.t_valid);
+                const recency = (lastMentioned - new Date('2025-01-01')) / (1000 * 60 * 60 * 24);
+                return { ...c, score: recency };
+            }).sort((a, b) => b.score - a.score);
+            ranked.forEach(r => {
+                const el = document.createElement('p');
+                el.textContent = `(${r.source.id}) -> [${r.data.label}] (Score: ${r.score.toFixed(2)})`;
+                el.className = r.data.isValid ? 'text-gray-300' : 'text-gray-500 line-through';
+                document.querySelector('#rerank-results > div').appendChild(el);
+            });
+            await delay(1500);
+
+            showToast('Step 3: Constructing final context...', 'success');
+            logToConsole('RETRIEVAL', 'Step 3: Constructing Context', 'text-cyan-400');
+            const finalContextLinks = ranked.filter(r => r.data.isValid).slice(0, 3);
+            finalContextLinks.forEach(l => {
+                const el = document.createElement('p');
+                el.textContent = `FACT: ${l.source.id} ${l.data.label} ${l.target.id}`;
+                document.querySelector('#construct-results > div').appendChild(el);
+
+                d3.selectAll('.link').filter(d => d === l).classed('highlight', true);
+                d3.selectAll('.node').filter(d => d.id === l.source.id || d.id === l.target.id)
+                  .selectAll('circle').attr('stroke', '#34d399').attr('stroke-width', 3);
+            });
+        }
+
+        async function runAutomatedSimulation() {
+            startSimBtn.disabled = true;
+            for (const message of scriptedConversation) {
+                addChatMessage(message.speaker, message.text);
+                await processMessage(message);
+                await delay(1000);
+            }
+            logToConsole('SYSTEM', 'Automated simulation complete.', 'text-teal-400');
+        }
+
+        // --- D3 RENDERING ---
+        function updateGraph() {
+            node = node.data(graph.nodes, d => d.id).join(
+                enter => {
+                    const nodeEnter = enter.append("g").attr("class", "node").call(drag(simulation));
+                    nodeEnter.append("circle")
+                        .attr("r", d => d.type === 'community' ? 20 : (d.type === 'entity' ? 15 : 10))
+                        .attr("fill", d => d.type === 'community' ? '#a21caf' : (d.type === 'entity' ? '#0ea5e9' : '#f59e0b'))
+                        .on("mouseover", (event, d) => {
+                            tooltip.style("opacity", 1)
+                                .html(`<b>ID:</b> ${d.id}<br><b>Type:</b> ${d.type}${d.text ? `<br><b>Text:</b> ${d.text}` : ''}${d.summary ? `<br><b>Summary:</b> ${d.summary}` : ''}`);
+                        })
+                        .on("mousemove", (event) => tooltip.style("left", (event.pageX + 15) + "px").style("top", (event.pageY - 28) + "px"))
+                        .on("mouseout", () => tooltip.style("opacity", 0));
+                    return nodeEnter;
+                }
+            );
+
+            link = link.data(graph.links, d => `${d.source.id}-${d.target.id}-${d.data.label}`).join("line")
+                .attr("class", "link")
+                .attr("stroke", "#94a3b8")
+                .attr("stroke-width", 2)
+                .classed("invalid", d => !d.data.isValid)
+                .on("mouseover", (event, d) => {
+                     tooltip.style("opacity", 1)
+                        .html(`<b>Fact:</b> ${d.data.label}<br><b>Valid:</b> ${d.data.isValid}<br><b>Valid From:</b> ${new Date(d.data.t_valid).toLocaleString()}${d.data.t_invalid ? `<br><b>Invalid From:</b> ${new Date(d.data.t_invalid).toLocaleString()}`: ''}`);
+                })
+                .on("mousemove", (event) => tooltip.style("left", (event.pageX + 15) + "px").style("top", (event.pageY - 28) + "px"))
+                .on("mouseout", () => tooltip.style("opacity", 0));
+
+            label = label.data(graph.nodes, d => d.id).join("text")
+                .attr("class", "label")
+                .text(d => d.id);
+
+            simulation.nodes(graph.nodes);
+            simulation.force("link").links(graph.links);
+            simulation.alpha(1).restart();
+        }
+
+        function ticked() {
+            link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+            node.attr("transform", d => `translate(${d.x},${d.y})`);
+            label.attr("x", d => d.x).attr("y", d => d.y - (d.type === 'community' ? 25 : (d.type === 'entity' ? 20 : 15)));
+        }
+
+        function drag(simulation) {
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x; d.fy = d.y;
+            }
+            function dragged(event, d) {
+                d.fx = event.x; d.fy = event.y;
+            }
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null; d.fy = null;
+            }
+            return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
+        }
+
+        // --- EVENT LISTENERS ---
+        startSimBtn.addEventListener('click', runAutomatedSimulation);
+
+        document.getElementById('query-btn').addEventListener('click', () => {
+            const queryText = document.getElementById('query-input').value;
+            if (queryText) queryMemory(queryText);
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            graph = { nodes: [], links: [] };
+            episodeCounter = 0;
+            simDate = new Date('2025-01-27T10:00:00Z');
+            consoleEl.innerHTML = '';
+            chatWindow.innerHTML = '';
+            startSimBtn.disabled = false;
+            document.getElementById('retrieval-panel').classList.remove('visible');
+            logToConsole('SYSTEM', 'Simulation Reset.', 'text-red-500');
+            updateGraph();
+        });
+
+        // --- INITIALIZATION ---
+        logToConsole('SYSTEM', 'Zep Simulator Initialized. Press "Start Automated Chat" to begin.', 'text-teal-400');
+        updateGraph();
+
+    </script>
+</body>
+</html>
