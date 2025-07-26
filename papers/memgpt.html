@@ -53,23 +53,6 @@
         <div
             class="relative grid min-h-screen grid-cols-[1fr_2.5rem_auto_2.5rem_1fr] grid-rows-[auto_2.5rem_1fr] bg-white [--pattern-fg:rgba(0,0,0,0.05)] dark:bg-gray-950 dark:[--pattern-fg:rgba(255,255,255,0.1)]"
         >
-            <!-- Header Section -->
-            <div
-                class="col-span-full col-start-1 row-start-1 bg-gray-100 py-12 dark:bg-white/5"
-            >
-                <div class="mx-auto max-w-4xl px-6 text-center">
-                    <h1
-                        class="mb-4 text-4xl font-bold text-gray-950 dark:text-white md:text-5xl"
-                    >
-                        MemGPT: Giving Language Models a Memory
-                    </h1>
-                    <p class="text-lg text-gray-700 dark:text-gray-300">
-                        An interactive explainer on how LLMs can overcome their
-                        limited context windows.
-                    </p>
-                </div>
-            </div>
-
             <!-- Decorative Pattern Borders -->
             <div
                 class="relative col-start-2 row-span-full row-start-2 border-x border-x-[--pattern-fg] pattern-bg"
@@ -82,6 +65,23 @@
             <div
                 class="col-start-3 row-start-3 flex w-full max-w-6xl flex-col space-y-6 bg-gray-100 p-2 dark:bg-white/10"
             >
+                <!-- Header Section -->
+                <div
+                    class="rounded-xl bg-white p-10 text-gray-700 dark:bg-gray-950 dark:text-gray-300"
+                >
+                    <h1
+                        class="mb-4 text-2xl font-medium text-gray-900 dark:text-white md:text-3xl"
+                    >
+                        MemGPT: Giving Language Models a Memory
+                    </h1>
+                    <p
+                        class="text-lg text-gray-600 dark:text-gray-300 leading-relaxed"
+                    >
+                        An interactive explainer showing how LLMs can overcome
+                        their limited context windows and remember conversations
+                        over time.
+                    </p>
+                </div>
                 <!-- Problem Section -->
                 <div
                     class="rounded-xl bg-white p-10 text-sm/7 text-gray-700 dark:bg-gray-950 dark:text-gray-300"
@@ -252,7 +252,7 @@
                                 </div>
                                 <div
                                     id="console-log"
-                                    class="h-48 overflow-y-auto font-mono text-xs leading-5 text-gray-300"
+                                    class="h-48 min-h-48 max-h-48 overflow-y-auto font-mono text-xs leading-5 text-gray-300 break-words"
                                 ></div>
                             </div>
 
@@ -342,7 +342,7 @@
                 const timestamp = new Date().toLocaleTimeString("en-US", {
                     hour12: false,
                 });
-                consoleLog.innerHTML += `\n<span class="text-gray-600">[${timestamp}]</span> <span class="${colors[type]}">${text}</span>`;
+                consoleLog.innerHTML += `<span class="text-gray-600">[${timestamp}]</span> <span class="${colors[type]}">${text}</span><br>`;
                 consoleLog.scrollTop = consoleLog.scrollHeight;
             }
 
