@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Generative Agents Simulator</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            body {
+                font-family: "Inter", sans-serif;
+            }
+            .terminal {
+                font-family: "Roboto Mono", monospace;
+            }
+            .agent {
+                transition: all 1.5s ease-in-out;
+                z-index: 10;
+            }
+            .thought-bubble {
+                position: absolute;
+                bottom: 120%; /* Position above the agent */
+                left: 50%;
+                transform: translateX(-50%);
+                background-color: rgba(
+                    31,
+                    41,
+                    55,
+                    0.9
+                ); /* bg-gray-800 with opacity */
+                color: white;
+                padding: 8px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                white-space: nowrap;
+                opacity: 0;
+                visibility: hidden;
+                transition:
+                    opacity 0.5s,
+                    visibility 0.5s;
+                z-index: 20;
+                border: 1px solid #4b5563; /* border-gray-600 */
+            }
+            .thought-bubble::after {
+                /* The little tail of the bubble */
+                content: "";
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                margin-left: -5px;
+                border-width: 5px;
+                border-style: solid;
+                border-color: #4b5563 transparent transparent transparent;
+            }
+            .agent:hover .thought-bubble {
+                /* Show on hover for quick check */
+                opacity: 1;
+                visibility: visible;
+            }
+            .location-container {
+                transition: background-color 0.3s;
+            }
+            .location-container:hover {
+                background-color: rgba(
+                    75,
+                    85,
+                    99,
+                    0.5
+                ); /* bg-gray-600 with opacity */
+            }
+        </style>
+    </head>
+    <body
+        class="bg-gray-900 text-white flex flex-col md:flex-row h-screen p-4 gap-4"
+    >
+        <!-- Main Simulation and Agent Info Area -->
+        <div class="flex-grow md:w-2/3 flex flex-col gap-4">
+            <!-- Header -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
+                <h1 class="text-2xl font-bold text-cyan-400">
+                    Generative Agents: Interactive Simulacra
+                </h1>
+                <p class="text-sm text-gray-400 mt-1">
+                    A simplified, interactive simulation based on the paper by
+                    Park, O'Brien, et al.
+                    <a
+                        href="https://arxiv.org/abs/2304.03442"
+                        target="_blank"
+                        class="text-cyan-500 hover:underline"
+                        >Read the original paper here</a
+                    >.
+                </p>
+            </div>
+
+            <!-- Simulation World -->
+            <div
+                id="simulation-world"
+                class="bg-gray-800 p-6 rounded-lg shadow-lg flex-grow relative grid grid-cols-3 gap-4"
+            >
+                <!-- Location: Hobbs Cafe -->
+                <div
+                    id="hobbs-cafe"
+                    class="location-container bg-gray-700/50 rounded-lg p-4 relative border-2 border-dashed border-gray-600"
+                >
+                    <h3 class="font-bold text-lg text-amber-300">Hobbs Cafe</h3>
+                    <p class="text-xs text-gray-400">
+                        A cozy spot for coffee and conversation.
+                    </p>
+                </div>
+                <!-- Location: Johnson Park -->
+                <div
+                    id="johnson-park"
+                    class="location-container bg-gray-700/50 rounded-lg p-4 relative border-2 border-dashed border-gray-600"
+                >
+                    <h3 class="font-bold text-lg text-green-400">
+                        Johnson Park
+                    </h3>
+                    <p class="text-xs text-gray-400">
+                        A place for walks and fresh air.
+                    </p>
+                </div>
+                <!-- Location: The Lin Family House -->
+                <div
+                    id="lin-house"
+                    class="location-container bg-gray-700/50 rounded-lg p-4 relative border-2 border-dashed border-gray-600"
+                >
+                    <h3 class="font-bold text-lg text-sky-400">
+                        Lin Family House
+                    </h3>
+                    <p class="text-xs text-gray-400">
+                        Home of John, Mei, and Eddy.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Simulation State Summary -->
+            <div
+                id="simulation-summary"
+                class="bg-gray-800 p-4 rounded-lg shadow-lg text-sm"
+            >
+                <h2 class="text-xl font-semibold mb-3 text-cyan-400">
+                    Simulation State
+                </h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                        <p class="text-gray-400">Current Time</p>
+                        <p
+                            id="summary-time"
+                            class="font-mono text-lg font-bold"
+                        >
+                            08:00 AM
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400">Active Agents</p>
+                        <p
+                            id="summary-agents"
+                            class="font-mono text-lg font-bold"
+                        >
+                            3
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400">Party Awareness</p>
+                        <p
+                            id="summary-party"
+                            class="font-mono text-lg font-bold"
+                        >
+                            1 / 3
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400">Election News</p>
+                        <p
+                            id="summary-election"
+                            class="font-mono text-lg font-bold"
+                        >
+                            1 / 3
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agent Interaction Panel -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
+                <h2 class="text-xl font-semibold mb-2 text-cyan-400">
+                    Interact with an Agent
+                </h2>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <select
+                        id="agent-selector"
+                        class="bg-gray-700 text-white rounded p-2 w-full sm:w-1/4"
+                    >
+                        <!-- Options will be populated by JS -->
+                    </select>
+                    <input
+                        type="text"
+                        id="user-input"
+                        class="bg-gray-700 text-white rounded p-2 flex-grow"
+                        placeholder="Say something as 'inner voice'..."
+                    />
+                    <button
+                        id="send-command-btn"
+                        class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded"
+                    >
+                        Send
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Console/Terminal -->
+        <div
+            class="md:w-1/3 flex flex-col bg-black rounded-lg shadow-2xl h-full"
+        >
+            <div class="bg-gray-800 p-3 flex items-center rounded-t-lg">
+                <div class="flex space-x-2">
+                    <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                </div>
+                <p class="text-center flex-grow font-mono text-sm">EVENT LOG</p>
+                <button
+                    id="pause-btn"
+                    class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded text-xs"
+                >
+                    Pause
+                </button>
+            </div>
+            <div
+                id="console"
+                class="terminal p-4 text-sm overflow-y-auto flex-grow text-gray-300"
+            >
+                <!-- Log messages will appear here -->
+            </div>
+        </div>
+
+        <!-- Agent Info Modal -->
+        <div
+            id="agent-modal"
+            class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center p-4 z-50"
+        >
+            <div
+                class="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-full overflow-y-auto p-6 relative"
+            >
+                <button
+                    id="close-modal-btn"
+                    class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl"
+                >
+                    &times;
+                </button>
+                <h2
+                    id="modal-agent-name"
+                    class="text-2xl font-bold text-cyan-400 mb-4"
+                ></h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h3 class="font-semibold text-lg text-amber-300 mb-2">
+                            Current Status
+                        </h3>
+                        <p id="modal-agent-status" class="text-gray-300"></p>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-lg text-amber-300 mb-2">
+                            Location
+                        </h3>
+                        <p id="modal-agent-location" class="text-gray-300"></p>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="font-semibold text-lg text-amber-300 mb-2">
+                        Memory Stream (Recent)
+                    </h3>
+                    <div
+                        id="modal-memory-stream"
+                        class="terminal bg-gray-900 p-3 rounded max-h-64 overflow-y-auto text-xs"
+                    ></div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // --- CONFIGURATION ---
+            const SIMULATION_SPEED = 5000; // Milliseconds per game tick
+            const MAX_MEMORY_RECORDS = 100;
+            const LOCATIONS = ["hobbs-cafe", "johnson-park", "lin-house"];
+
+            // --- DOM ELEMENTS ---
+            const consoleEl = document.getElementById("console");
+            const agentSelector = document.getElementById("agent-selector");
+            const userInput = document.getElementById("user-input");
+            const sendCommandBtn = document.getElementById("send-command-btn");
+            const pauseBtn = document.getElementById("pause-btn");
+            const agentModal = document.getElementById("agent-modal");
+            const closeModalBtn = document.getElementById("close-modal-btn");
+            const summaryTimeEl = document.getElementById("summary-time");
+            const summaryAgentsEl = document.getElementById("summary-agents");
+            const summaryPartyEl = document.getElementById("summary-party");
+            const summaryElectionEl =
+                document.getElementById("summary-election");
+
+            // --- SIMULATION STATE ---
+            let agents = [];
+            let gameTime = new Date("2023-02-13T08:00:00");
+            let simulationInterval;
+            let isPaused = false;
+
+            // --- CORE CLASSES ---
+            class Agent {
+                constructor(name, description, locationId) {
+                    this.name = name;
+                    this.description = description;
+                    this.memoryStream = [];
+                    this.plan = "Wake up and start the day.";
+                    this.currentAction = "is starting their day.";
+                    this.locationId = locationId;
+                    this.avatarContainer = this.createAvatar();
+                    this.thoughtBubble =
+                        this.avatarContainer.querySelector(".thought-bubble");
+                    this.logMemory(`Initial state: ${description}`);
+                    this.logMemory(`Initial plan: ${this.plan}`);
+                    this.updateLocation(locationId, true); // Initial placement
+                }
+
+                createAvatar() {
+                    const container = document.createElement("div");
+                    container.className =
+                        "agent absolute w-12 h-12 flex items-center justify-center";
+
+                    const bubble = document.createElement("div");
+                    bubble.className = "thought-bubble";
+                    container.appendChild(bubble);
+
+                    const avatar = document.createElement("div");
+                    avatar.className =
+                        "w-10 h-10 rounded-full flex items-center justify-center text-lg cursor-pointer shadow-lg";
+                    avatar.textContent = this.name.charAt(0);
+                    avatar.style.backgroundColor = this.getRandomColor();
+                    avatar.title = this.name;
+                    avatar.onclick = () => this.showInfo();
+                    container.appendChild(avatar);
+
+                    return container;
+                }
+
+                getRandomColor() {
+                    const letters = "89ABCDEF";
+                    let color = "#";
+                    for (let i = 0; i < 6; i++) {
+                        color += letters[Math.floor(Math.random() * 8)];
+                    }
+                    return color;
+                }
+
+                logMemory(entry) {
+                    const timestamp = gameTime.toISOString();
+                    this.memoryStream.unshift({ timestamp, entry });
+                    if (this.memoryStream.length > MAX_MEMORY_RECORDS) {
+                        this.memoryStream.pop();
+                    }
+                }
+
+                showThoughtBubble(text) {
+                    this.thoughtBubble.textContent = text;
+                    this.thoughtBubble.style.opacity = "1";
+                    this.thoughtBubble.style.visibility = "visible";
+
+                    setTimeout(() => {
+                        this.thoughtBubble.style.opacity = "0";
+                        this.thoughtBubble.style.visibility = "hidden";
+                    }, SIMULATION_SPEED - 500); // Hide before next tick
+                }
+
+                async think() {
+                    const observations = this.perceive();
+                    observations.forEach((obs) =>
+                        this.logMemory(`Observed: ${obs}`),
+                    );
+                    const relevantMemories = this.memoryStream
+                        .slice(0, 10)
+                        .map((m) => m.entry)
+                        .join("\n");
+
+                    const prompt = `
+                    You are ${this.name}.
+                    Your core identity: ${this.description}
+                    Current time: ${gameTime.toLocaleTimeString()}
+                    Your current location: ${this.locationId}
+                    Your current plan: ${this.plan}
+                    Recent memories:
+                    ${relevantMemories}
+
+                    Based on this, decide your next single action, an updated plan, and if you should move.
+                    Available locations: ${LOCATIONS.join(", ")}.
+                    Format your response as:
+                    ACTION: [Your action]
+                    PLAN: [Your new plan]
+                    LOCATION: [New location ID or 'STAY']
+                `;
+
+                    const response = await this.mockLLM(prompt);
+
+                    try {
+                        const newAction = response.match(/ACTION: (.*)/)[1];
+                        const newPlan = response.match(/PLAN: (.*)/)[1];
+                        const newLocation = response.match(/LOCATION: (.*)/)[1];
+
+                        if (newAction && this.currentAction !== newAction) {
+                            this.currentAction = newAction;
+                            this.logMemory(`New action: ${this.currentAction}`);
+                            logToConsole(
+                                "ACTION",
+                                `${this.name} ${this.currentAction}`,
+                                "text-lime-400",
+                            );
+                            this.showThoughtBubble(this.currentAction);
+                        }
+                        if (newPlan && this.plan !== newPlan) {
+                            this.plan = newPlan;
+                            this.logMemory(`Updated plan: ${this.plan}`);
+                            logToConsole(
+                                "PLAN",
+                                `${this.name} updated their plan: "${this.plan}"`,
+                                "text-yellow-400",
+                            );
+                        }
+                        if (
+                            newLocation &&
+                            newLocation !== "STAY" &&
+                            this.locationId !== newLocation
+                        ) {
+                            this.updateLocation(newLocation);
+                        }
+                    } catch (e) {
+                        logToConsole(
+                            "ERROR",
+                            `Agent ${this.name} had a thought error.`,
+                            "text-red-500",
+                        );
+                        console.error(
+                            "Error parsing agent thought:",
+                            response,
+                            "Prompt:",
+                            prompt,
+                        );
+                    }
+
+                    if (Math.random() < 0.1) {
+                        this.reflect();
+                    }
+                }
+
+                async reflect() {
+                    const recentMemories = this.memoryStream
+                        .slice(0, 20)
+                        .map((m) => m.entry)
+                        .join("\n");
+                    const prompt = `
+                    Given these recent experiences for ${this.name}:
+                    ${recentMemories}
+                    What is one high-level insight ${this.name} might have?
+                `;
+                    const reflection = await this.mockLLM(prompt);
+                    this.logMemory(`Reflection: ${reflection}`);
+                    logToConsole(
+                        "REFLECT",
+                        `${this.name} reflects: "${reflection}"`,
+                        "text-fuchsia-400",
+                    );
+                }
+
+                perceive() {
+                    let observations = [];
+                    const myLocationEl = document.getElementById(
+                        this.locationId,
+                    );
+                    agents.forEach((otherAgent) => {
+                        if (
+                            otherAgent !== this &&
+                            otherAgent.locationId === this.locationId
+                        ) {
+                            observations.push(
+                                `${otherAgent.name} is here and ${otherAgent.currentAction}`,
+                            );
+                        }
+                    });
+                    observations.push(
+                        `Currently at ${myLocationEl.querySelector("h3").textContent}.`,
+                    );
+                    return observations;
+                }
+
+                updateLocation(newLocationId, force = false) {
+                    logToConsole(
+                        "MOVE",
+                        `${this.name} is moving to ${document.getElementById(newLocationId).querySelector("h3").textContent}.`,
+                        "text-sky-400",
+                    );
+                    this.locationId = newLocationId;
+                    const locationEl = document.getElementById(newLocationId);
+                    if (locationEl) {
+                        locationEl.appendChild(this.avatarContainer);
+                        if (force) {
+                            // No transition on first placement
+                            this.avatarContainer.style.transition = "none";
+                        } else {
+                            this.avatarContainer.style.transition = `all ${Math.random() * 1 + 1}s ease-in-out`;
+                        }
+                        this.avatarContainer.style.top = `${Math.random() * 70 + 15}%`;
+                        this.avatarContainer.style.left = `${Math.random() * 70 + 15}%`;
+                        if (force) {
+                            // re-enable transitions
+                            setTimeout(
+                                () =>
+                                    (this.avatarContainer.style.transition =
+                                        ""),
+                                100,
+                            );
+                        }
+                    }
+                }
+
+                showInfo() {
+                    document.getElementById("modal-agent-name").textContent =
+                        this.name;
+                    document.getElementById("modal-agent-status").textContent =
+                        this.currentAction;
+                    document.getElementById(
+                        "modal-agent-location",
+                    ).textContent = document
+                        .getElementById(this.locationId)
+                        .querySelector("h3").textContent;
+
+                    const memoryStreamEl = document.getElementById(
+                        "modal-memory-stream",
+                    );
+                    memoryStreamEl.innerHTML = this.memoryStream
+                        .map(
+                            (mem) =>
+                                `<p><span class="text-gray-500">${new Date(mem.timestamp).toLocaleTimeString()}:</span> ${mem.entry}</p>`,
+                        )
+                        .join("");
+
+                    agentModal.classList.remove("hidden");
+                    agentModal.classList.add("flex");
+                }
+
+                async mockLLM(prompt) {
+                    // More sophisticated mock LLM with movement
+                    const otherAgent = agents.find(
+                        (a) =>
+                            a.name !== this.name &&
+                            a.locationId === this.locationId,
+                    );
+
+                    if (prompt.includes("What is one high-level insight")) {
+                        if (
+                            this.memoryStream.some((m) =>
+                                m.entry.includes("party"),
+                            )
+                        ) {
+                            return "This party is a great way to bring the community together.";
+                        }
+                        return "I should focus on my personal goals today.";
+                    }
+
+                    if (this.name === "Isabella Rodriguez") {
+                        if (
+                            this.memoryStream.some((m) =>
+                                m.entry.toLowerCase().includes("party"),
+                            )
+                        ) {
+                            if (otherAgent) {
+                                return `ACTION: invites ${otherAgent.name} to the Valentine's Day party.\nPLAN: Invite everyone I see to the party.\nLOCATION: STAY`;
+                            }
+                            const otherLocation = LOCATIONS.find(
+                                (l) => l !== this.locationId,
+                            );
+                            return `ACTION: decides to go spread the word about the party elsewhere.\nPLAN: Invite people at other locations to the party.\nLOCATION: ${otherLocation}`;
+                        }
+                    }
+
+                    if (this.name === "John Lin") {
+                        if (gameTime.getHours() < 9) {
+                            return `ACTION: is getting ready for work.\nPLAN: Head to the cafe for a coffee before work.\nLOCATION: hobbs-cafe`;
+                        }
+                        if (this.locationId === "hobbs-cafe") {
+                            return `ACTION: is enjoying a morning coffee.\nPLAN: Finish coffee and then take a nice walk.\nLOCATION: johnson-park`;
+                        }
+                        return `ACTION: is taking a relaxing walk.\nPLAN: Head home after this lovely walk.\nLOCATION: lin-house`;
+                    }
+
+                    if (this.name === "Sam Moore") {
+                        if (
+                            this.memoryStream.some((m) =>
+                                m.entry.toLowerCase().includes("mayor"),
+                            )
+                        ) {
+                            if (otherAgent) {
+                                return `ACTION: discusses his thoughts on the mayoral race with ${otherAgent.name}.\nPLAN: Gauge public opinion on my candidacy.\nLOCATION: STAY`;
+                            }
+                        }
+                        if (
+                            this.locationId === "johnson-park" &&
+                            Math.random() < 0.3
+                        ) {
+                            return `ACTION: feels like a coffee.\nPLAN: Go to Hobbs Cafe for a break.\nLOCATION: hobbs-cafe`;
+                        }
+                        if (this.locationId === "hobbs-cafe") {
+                            return `ACTION: is chatting with the locals.\nPLAN: Finish his coffee and go back to the park.\nLOCATION: johnson-park`;
+                        }
+                        return `ACTION: is enjoying the fresh air in the park.\nPLAN: Continue his walk and think about the mayoral race.\nLOCATION: STAY`;
+                    }
+
+                    return `ACTION: is thinking about what to do next.\nPLAN: Find something interesting to do.\nLOCATION: STAY`;
+                }
+            }
+
+            // --- UTILITY FUNCTIONS ---
+            function logToConsole(type, message, colorClass) {
+                const timestamp = gameTime.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                });
+                const logEntry = document.createElement("div");
+                logEntry.innerHTML = `
+                <span class="text-gray-500">${timestamp}</span>
+                <span class="${colorClass} font-bold"> [${type}]</span>
+                <span> ${message}</span>
+            `;
+                consoleEl.appendChild(logEntry);
+                consoleEl.scrollTop = consoleEl.scrollHeight;
+            }
+
+            function updateSimulationSummary() {
+                // Update time
+                summaryTimeEl.textContent = gameTime.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                });
+
+                // Update agent count
+                summaryAgentsEl.textContent = agents.length;
+
+                // Check for party awareness
+                let partyAwareness = 0;
+                agents.forEach((agent) => {
+                    if (
+                        agent.memoryStream.some((mem) =>
+                            mem.entry.toLowerCase().includes("party"),
+                        )
+                    ) {
+                        partyAwareness++;
+                    }
+                });
+                summaryPartyEl.textContent = `${partyAwareness} / ${agents.length}`;
+
+                // Check for election awareness
+                let electionAwareness = 0;
+                agents.forEach((agent) => {
+                    if (
+                        agent.memoryStream.some(
+                            (mem) =>
+                                mem.entry.toLowerCase().includes("mayor") ||
+                                mem.entry.toLowerCase().includes("election"),
+                        )
+                    ) {
+                        electionAwareness++;
+                    }
+                });
+                summaryElectionEl.textContent = `${electionAwareness} / ${agents.length}`;
+            }
+
+            function initializeAgents() {
+                agents.push(
+                    new Agent(
+                        "Isabella Rodriguez",
+                        "Runs Hobbs Cafe. Friendly, loves community events.",
+                        "hobbs-cafe",
+                    ),
+                );
+                agents.push(
+                    new Agent(
+                        "John Lin",
+                        "A kind pharmacy shopkeeper.",
+                        "lin-house",
+                    ),
+                );
+                agents.push(
+                    new Agent(
+                        "Sam Moore",
+                        "An old man who enjoys walks and is considering running for mayor.",
+                        "johnson-park",
+                    ),
+                );
+
+                agents.forEach((agent) => {
+                    const option = document.createElement("option");
+                    option.value = agent.name;
+                    option.textContent = agent.name;
+                    agentSelector.appendChild(option);
+                });
+            }
+
+            function simulationTick() {
+                if (isPaused) return;
+                gameTime.setMinutes(gameTime.getMinutes() + 5);
+
+                agents.forEach((agent) => agent.think());
+                updateSimulationSummary();
+            }
+
+            // --- EVENT LISTENERS ---
+            sendCommandBtn.addEventListener("click", () => {
+                const agentName = agentSelector.value;
+                const command = userInput.value;
+                const agent = agents.find((a) => a.name === agentName);
+
+                if (agent && command) {
+                    logToConsole(
+                        "USER",
+                        `Gave directive to ${agentName}: "${command}"`,
+                        "text-cyan-400",
+                    );
+                    agent.logMemory(`Inner voice directive: ${command}`);
+                    agent.plan = command;
+                    agent.currentAction = `considering the directive: "${command}"`;
+                    userInput.value = "";
+                    agent.showThoughtBubble(`Considering: "${command}"`);
+                }
+            });
+
+            pauseBtn.addEventListener("click", () => {
+                isPaused = !isPaused;
+                pauseBtn.textContent = isPaused ? "Resume" : "Pause";
+                pauseBtn.classList.toggle("bg-green-500", isPaused);
+                pauseBtn.classList.toggle("bg-gray-600", !isPaused);
+                logToConsole(
+                    "SYSTEM",
+                    `Simulation ${isPaused ? "paused" : "resumed"}.`,
+                    "text-gray-500",
+                );
+            });
+
+            closeModalBtn.addEventListener("click", () => {
+                agentModal.classList.add("hidden");
+                agentModal.classList.remove("flex");
+            });
+
+            // --- INITIALIZATION ---
+            logToConsole(
+                "SYSTEM",
+                "Initializing simulation...",
+                "text-gray-500",
+            );
+            initializeAgents();
+            logToConsole(
+                "SYSTEM",
+                "Simulation ready. Starting loop...",
+                "text-gray-500",
+            );
+            simulationInterval = setInterval(simulationTick, SIMULATION_SPEED);
+            updateSimulationSummary(); // Initial call
+
+            setTimeout(() => {
+                const isabella = agents.find(
+                    (a) => a.name === "Isabella Rodriguez",
+                );
+                if (isabella) {
+                    const partyIdea =
+                        "I want to throw a Valentine's Day party at the cafe!";
+                    isabella.logMemory(`Initial idea: ${partyIdea}`);
+                    isabella.plan = "Plan the Valentine's Day party.";
+                    logToConsole(
+                        "EVENT",
+                        `Isabella has an idea: "${partyIdea}"`,
+                        "text-pink-400",
+                    );
+                }
+            }, SIMULATION_SPEED * 2);
+
+            setTimeout(() => {
+                const sam = agents.find((a) => a.name === "Sam Moore");
+                if (sam) {
+                    const electionIdea =
+                        "I should consider running for mayor in the upcoming election.";
+                    sam.logMemory(`Initial idea: ${electionIdea}`);
+                    sam.plan = "Think about running for mayor.";
+                    logToConsole(
+                        "EVENT",
+                        `Sam has an idea: "${electionIdea}"`,
+                        "text-orange-400",
+                    );
+                }
+            }, SIMULATION_SPEED * 3);
+        </script>
+    </body>
+</html>
