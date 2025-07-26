@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Interactive Explainer: MemGPT</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            /* Custom properties and minimal styles */
+            :root {
+                --pattern-fg: rgba(0, 0, 0, 0.05);
+            }
+
+            html.dark {
+                --pattern-fg: rgba(255, 255, 255, 0.1);
+            }
+
+            .pattern-bg {
+                background-image: repeating-linear-gradient(
+                    315deg,
+                    var(--pattern-fg) 0,
+                    var(--pattern-fg) 1px,
+                    transparent 0,
+                    transparent 50%
+                );
+                background-size: 10px 10px;
+                background-attachment: fixed;
+            }
+
+            .memory-bar {
+                transition:
+                    width 0.5s ease-in-out,
+                    background-color 0.5s ease-in-out;
+            }
+
+            .message {
+                transition: all 0.5s ease-in-out;
+                transform-origin: bottom left;
+            }
+
+            .message.fade-out {
+                opacity: 0;
+                transform: translateX(-30px) scale(0.8);
+            }
+
+            .highlight-border {
+                border-color: #0ea5e9 !important;
+                box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+            }
+        </style>
+    </head>
+    <body class="bg-white dark:bg-gray-950">
+        <div
+            class="relative grid min-h-screen grid-cols-[1fr_2.5rem_auto_2.5rem_1fr] grid-rows-[auto_2.5rem_1fr] bg-white [--pattern-fg:rgba(0,0,0,0.05)] dark:bg-gray-950 dark:[--pattern-fg:rgba(255,255,255,0.1)]"
+        >
+            <!-- Header Section -->
+            <div
+                class="col-span-full col-start-1 row-start-1 bg-gray-100 py-12 dark:bg-white/5"
+            >
+                <div class="mx-auto max-w-4xl px-6 text-center">
+                    <h1
+                        class="mb-4 text-4xl font-bold text-gray-950 dark:text-white md:text-5xl"
+                    >
+                        MemGPT: Giving Language Models a Memory
+                    </h1>
+                    <p class="text-lg text-gray-700 dark:text-gray-300">
+                        An interactive explainer on how LLMs can overcome their
+                        limited context windows.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Decorative Pattern Borders -->
+            <div
+                class="relative col-start-2 row-span-full row-start-2 border-x border-x-[--pattern-fg] pattern-bg"
+            ></div>
+            <div
+                class="relative col-start-4 row-span-full row-start-2 border-x border-x-[--pattern-fg] pattern-bg"
+            ></div>
+
+            <!-- Main Content -->
+            <div
+                class="col-start-3 row-start-3 flex w-full max-w-6xl flex-col space-y-6 bg-gray-100 p-2 dark:bg-white/10"
+            >
+                <!-- Problem Section -->
+                <div
+                    class="rounded-xl bg-white p-10 text-sm/7 text-gray-700 dark:bg-gray-950 dark:text-gray-300"
+                >
+                    <h2
+                        class="mb-6 text-2xl font-bold text-gray-950 dark:text-white"
+                    >
+                        The Problem: A Brilliant Mind with a Short Memory
+                    </h2>
+                    <p class="mb-6">
+                        Large Language Models (LLMs) have a fixed "context
+                        window"—a limited working memory. Any information
+                        outside this window is forgotten.
+                    </p>
+
+                    <div class="rounded-lg bg-gray-100 p-4 dark:bg-white/5">
+                        <div
+                            class="mb-3 flex items-center justify-between text-sm font-medium"
+                        >
+                            <span>LLM Context Window (RAM)</span>
+                            <span
+                                id="memory-usage-text"
+                                class="text-gray-950 dark:text-white"
+                                >0% Full</span
+                            >
+                        </div>
+                        <div
+                            class="h-3 w-full overflow-hidden rounded-full bg-gray-300 dark:bg-gray-800"
+                        >
+                            <div
+                                id="memory-bar"
+                                class="memory-bar h-full rounded-full bg-sky-500"
+                                style="width: 0%"
+                            ></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Solution Section -->
+                <div
+                    class="rounded-xl bg-white p-10 text-sm/7 text-gray-700 dark:bg-gray-950 dark:text-gray-300"
+                >
+                    <h2
+                        class="mb-6 text-2xl font-bold text-gray-950 dark:text-white"
+                    >
+                        The Solution: An Operating System for Memory
+                    </h2>
+                    <p class="mb-8">
+                        MemGPT gives the LLM a memory system inspired by a
+                        computer's OS with fast "Main Context" (RAM) and vast
+                        "External Storage" (hard drive).
+                    </p>
+
+                    <div class="grid gap-6 lg:grid-cols-2">
+                        <!-- Left: Memory Components -->
+                        <div class="space-y-4">
+                            <!-- Main Context -->
+                            <div
+                                id="main-context-box"
+                                class="rounded-lg border-2 border-gray-200 bg-gray-50 p-6 transition-all duration-500 dark:border-gray-800 dark:bg-white/5"
+                            >
+                                <h3
+                                    class="mb-4 flex items-center text-lg font-bold text-gray-950 dark:text-white"
+                                >
+                                    <span class="mr-2 text-xl">🧠</span> Main
+                                    Context (RAM)
+                                </h3>
+
+                                <div class="space-y-3">
+                                    <div
+                                        class="rounded-md bg-white p-3 dark:bg-gray-900"
+                                    >
+                                        <p
+                                            class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                                        >
+                                            System Instructions
+                                        </p>
+                                        <p
+                                            class="mt-1 font-mono text-xs text-gray-600 dark:text-gray-300"
+                                        >
+                                            "You are a helpful assistant..."
+                                        </p>
+                                    </div>
+
+                                    <div
+                                        id="working-context-box"
+                                        class="rounded-md border-2 border-transparent bg-white p-3 transition-all duration-500 dark:bg-gray-900"
+                                    >
+                                        <p
+                                            class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                                        >
+                                            Working Context
+                                        </p>
+                                        <div
+                                            id="working-context-content"
+                                            class="mt-1 min-h-[20px] font-mono text-xs text-yellow-600 dark:text-yellow-400"
+                                        ></div>
+                                    </div>
+
+                                    <div
+                                        class="rounded-md bg-white p-3 dark:bg-gray-900"
+                                    >
+                                        <p
+                                            class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                                        >
+                                            Conversation Queue
+                                        </p>
+                                        <div
+                                            id="chat-history"
+                                            class="mt-2 min-h-[100px] space-y-2"
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- External Storage -->
+                            <div
+                                id="external-storage-box"
+                                class="rounded-lg border-2 border-gray-200 bg-gray-50 p-6 transition-all duration-500 dark:border-gray-800 dark:bg-white/5"
+                            >
+                                <h3
+                                    class="mb-4 flex items-center text-lg font-bold text-gray-950 dark:text-white"
+                                >
+                                    <span class="mr-2 text-xl">💽</span>
+                                    External Storage
+                                </h3>
+                                <div
+                                    id="external-storage-content"
+                                    class="min-h-[50px] space-y-1 font-mono text-xs text-gray-600 dark:text-gray-400"
+                                ></div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Controls -->
+                        <div class="flex flex-col space-y-4">
+                            <!-- Explanation Box -->
+                            <div
+                                id="explanation-box"
+                                class="rounded-lg bg-sky-50 p-4 text-center transition-opacity duration-500 dark:bg-sky-950/20"
+                            >
+                                <p
+                                    id="explanation-text"
+                                    class="text-sm font-medium text-sky-900 dark:text-sky-300"
+                                >
+                                    Click 'Start Simulation' to begin the guided
+                                    tour.
+                                </p>
+                            </div>
+
+                            <!-- Console -->
+                            <div class="flex-1 rounded-lg bg-gray-900 p-4">
+                                <div class="mb-2 flex items-center">
+                                    <div class="mr-2 flex space-x-1.5">
+                                        <div
+                                            class="h-3 w-3 rounded-full bg-red-500"
+                                        ></div>
+                                        <div
+                                            class="h-3 w-3 rounded-full bg-yellow-500"
+                                        ></div>
+                                        <div
+                                            class="h-3 w-3 rounded-full bg-green-500"
+                                        ></div>
+                                    </div>
+                                    <span
+                                        class="font-mono text-xs text-gray-500"
+                                        >console</span
+                                    >
+                                </div>
+                                <div
+                                    id="console-log"
+                                    class="h-48 overflow-y-auto font-mono text-xs leading-5 text-gray-300"
+                                ></div>
+                            </div>
+
+                            <!-- Buttons -->
+                            <div class="space-y-3">
+                                <button
+                                    id="next-step-btn"
+                                    class="w-full rounded-lg bg-sky-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-800 dark:bg-sky-500 dark:hover:bg-sky-600 dark:disabled:bg-sky-700"
+                                >
+                                    Start Simulation
+                                </button>
+                                <button
+                                    id="reset-btn"
+                                    class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div
+                    class="rounded-xl bg-white p-10 text-center text-sm/7 text-gray-700 dark:bg-gray-950 dark:text-gray-300"
+                >
+                    <p class="mb-3">Want to learn more about MemGPT?</p>
+                    <p class="font-semibold">
+                        <a
+                            href="https://memgpt.ai"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-gray-950 underline decoration-sky-400 underline-offset-3 hover:decoration-2 dark:text-white"
+                        >
+                            Read the documentation →
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // --- DOM Elements ---
+            const memoryBar = document.getElementById("memory-bar");
+            const memoryUsageText =
+                document.getElementById("memory-usage-text");
+            const chatHistory = document.getElementById("chat-history");
+            const nextStepBtn = document.getElementById("next-step-btn");
+            const resetBtn = document.getElementById("reset-btn");
+            const consoleLog = document.getElementById("console-log");
+            const workingContextContent = document.getElementById(
+                "working-context-content",
+            );
+            const externalStorageContent = document.getElementById(
+                "external-storage-content",
+            );
+            const explanationText = document.getElementById("explanation-text");
+            const explanationBox = document.getElementById("explanation-box");
+
+            const mainContextBox = document.getElementById("main-context-box");
+            const workingContextBox = document.getElementById(
+                "working-context-box",
+            );
+            const externalStorageBox = document.getElementById(
+                "external-storage-box",
+            );
+
+            // --- Simulation State ---
+            let memoryUsage = 0;
+            const MAX_MEMORY = 100;
+            const MEMORY_PER_MSG = 30;
+            let messageQueue = [];
+            let externalStorage = [];
+            let workingContext = [];
+            let currentStep = 0;
+
+            // --- Helper Functions ---
+            const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+            function logToConsole(text, type = "info") {
+                const colors = {
+                    info: "text-gray-400",
+                    command: "text-sky-400",
+                    result: "text-green-400",
+                    alert: "text-red-400",
+                };
+                const timestamp = new Date().toLocaleTimeString("en-US", {
+                    hour12: false,
+                });
+                consoleLog.innerHTML += `\n<span class="text-gray-600">[${timestamp}]</span> <span class="${colors[type]}">${text}</span>`;
+                consoleLog.scrollTop = consoleLog.scrollHeight;
+            }
+
+            function highlightBox(box, duration = 1500) {
+                if (box) {
+                    box.classList.add("highlight-border");
+                    setTimeout(
+                        () => box.classList.remove("highlight-border"),
+                        duration,
+                    );
+                }
+            }
+
+            function updateMemoryUI() {
+                memoryUsage = Math.max(0, Math.min(memoryUsage, MAX_MEMORY));
+                memoryBar.style.width = `${memoryUsage}%`;
+                memoryUsageText.innerText = `${Math.round(memoryUsage)}% Full`;
+
+                if (memoryUsage >= 80) {
+                    memoryBar.classList.remove("bg-sky-500");
+                    memoryBar.classList.add("bg-red-500");
+                } else {
+                    memoryBar.classList.remove("bg-red-500");
+                    memoryBar.classList.add("bg-sky-500");
+                }
+            }
+
+            function addMessageToChat(text, from = "user") {
+                const messageEl = document.createElement("div");
+                const isUser = from === "user";
+                const isSystem = from === "system";
+
+                let bgColor = "bg-gray-100 dark:bg-gray-800";
+                if (isUser) bgColor = "bg-sky-100 dark:bg-sky-900/30";
+                if (isSystem) bgColor = "bg-purple-100 dark:bg-purple-900/30";
+
+                messageEl.className = `message rounded-md p-2 text-xs ${bgColor}`;
+                messageEl.innerHTML = `
+                <span class="font-semibold ${isUser ? "text-sky-700 dark:text-sky-300" : isSystem ? "text-purple-700 dark:text-purple-300" : "text-gray-700 dark:text-gray-300"}">
+                    ${isUser ? "User" : isSystem ? "System" : "Assistant"}:
+                </span>
+                <span class="text-gray-600 dark:text-gray-400 ml-1">${text}</span>
+            `;
+
+                chatHistory.appendChild(messageEl);
+                messageQueue.push({ el: messageEl, text: text });
+
+                if (!isSystem) {
+                    memoryUsage += MEMORY_PER_MSG;
+                    updateMemoryUI();
+                }
+
+                return messageEl;
+            }
+
+            // --- Simulation Steps ---
+            const simulationSteps = [
+                {
+                    explanation:
+                        "Let's start a conversation. Each message takes up space in the context window.",
+                    action: async () => {
+                        logToConsole(
+                            "User: My favorite color is teal.",
+                            "info",
+                        );
+                        addMessageToChat("My favorite color is teal.", "user");
+                        await sleep(500);
+                        addMessageToChat("I'll remember that!", "bot");
+                    },
+                },
+                {
+                    explanation:
+                        "As we add more messages, the memory fills up. Watch the progress bar.",
+                    action: async () => {
+                        logToConsole(
+                            "User: I'm planning a trip to Japan next year.",
+                            "info",
+                        );
+                        addMessageToChat(
+                            "I'm planning a trip to Japan next year.",
+                            "user",
+                        );
+                        await sleep(500);
+                        addMessageToChat("Japan sounds wonderful!", "bot");
+                    },
+                },
+                {
+                    explanation:
+                        "Let's add a key fact. Notice the memory usage is getting high.",
+                    action: async () => {
+                        logToConsole("User: My dog's name is Sparky.", "info");
+                        addMessageToChat("My dog's name is Sparky.", "user");
+                        await sleep(500);
+                        addMessageToChat("Sparky is a great name!", "bot");
+                    },
+                },
+                {
+                    explanation:
+                        "⚠️ Memory pressure alert! The context window is almost full.",
+                    action: async () => {
+                        logToConsole(
+                            "ALERT: Memory usage at critical level",
+                            "alert",
+                        );
+                        highlightBox(mainContextBox, 3000);
+                        await sleep(1000);
+                        logToConsole(
+                            "Analyzing conversation for important facts...",
+                            "info",
+                        );
+                    },
+                },
+                {
+                    explanation:
+                        "The LLM saves 'Dog's name is Sparky' to Working Context for quick access.",
+                    action: async () => {
+                        logToConsole(
+                            "working_context.append('Dog\\'s name: Sparky')",
+                            "command",
+                        );
+                        highlightBox(workingContextBox, 2000);
+                        await sleep(1000);
+                        workingContext.push("Dog's name: Sparky");
+                        workingContextContent.innerHTML =
+                            "• Dog's name: Sparky";
+                        logToConsole(
+                            "✓ Fact saved to Working Context",
+                            "result",
+                        );
+                    },
+                },
+                {
+                    explanation:
+                        "To free space, older messages are moved to External Storage.",
+                    action: async () => {
+                        logToConsole(
+                            "Moving oldest messages to External Storage...",
+                            "info",
+                        );
+                        highlightBox(externalStorageBox, 3000);
+
+                        const toEvict = 2;
+                        for (
+                            let i = 0;
+                            i < toEvict * 2 && messageQueue.length > 0;
+                            i++
+                        ) {
+                            const oldMsg = messageQueue.shift();
+                            oldMsg.el.classList.add("fade-out");
+
+                            if (i % 2 === 0) {
+                                externalStorage.push(oldMsg.text);
+                                const p = document.createElement("div");
+                                p.className = "text-gray-500";
+                                p.innerText = `• "${oldMsg.text}"`;
+                                externalStorageContent.appendChild(p);
+                            }
+
+                            memoryUsage -= MEMORY_PER_MSG / 2;
+                            updateMemoryUI();
+                            await sleep(300);
+                        }
+                        logToConsole(
+                            `✓ ${toEvict} conversations archived`,
+                            "result",
+                        );
+                    },
+                },
+                {
+                    explanation:
+                        "Now let's test the memory. Ask about something recent.",
+                    action: async () => {
+                        logToConsole("User: What's my dog's name?", "info");
+                        addMessageToChat("What's my dog's name?", "user");
+                    },
+                },
+                {
+                    explanation:
+                        "✨ MemGPT checks Working Context first and finds the answer instantly!",
+                    action: async () => {
+                        logToConsole("Checking Working Context...", "info");
+                        highlightBox(workingContextBox, 2000);
+                        await sleep(1500);
+                        logToConsole("✓ Found in Working Context!", "result");
+                        await sleep(500);
+                        addMessageToChat("Your dog's name is Sparky.", "bot");
+                    },
+                },
+                {
+                    explanation:
+                        "What about older information? Let's ask about the first message.",
+                    action: async () => {
+                        logToConsole(
+                            "User: What is my favorite color?",
+                            "info",
+                        );
+                        addMessageToChat("What is my favorite color?", "user");
+                    },
+                },
+                {
+                    explanation:
+                        "Not in Working Context. Searching External Storage...",
+                    action: async () => {
+                        logToConsole("Not in Working Context", "info");
+                        logToConsole(
+                            "recall_storage.search('favorite color')",
+                            "command",
+                        );
+                        highlightBox(externalStorageBox, 2000);
+                    },
+                },
+                {
+                    explanation:
+                        "Found it! The memory is loaded back into Main Context.",
+                    action: async () => {
+                        const found = externalStorage.find((m) =>
+                            m.includes("teal"),
+                        );
+                        logToConsole(`✓ Found: "${found}"`, "result");
+                        await sleep(1000);
+                        logToConsole(
+                            "Loading memory into Main Context...",
+                            "info",
+                        );
+                        highlightBox(mainContextBox, 2000);
+
+                        const sysMsg = addMessageToChat(
+                            `Retrieved: "${found}"`,
+                            "system",
+                        );
+                        await sleep(1500);
+                        addMessageToChat("Your favorite color is teal.", "bot");
+                    },
+                },
+                {
+                    explanation:
+                        "🎉 That's how MemGPT creates the illusion of infinite memory!",
+                    action: async () => {
+                        logToConsole("Simulation complete", "result");
+                        explanationBox.classList.remove(
+                            "bg-sky-50",
+                            "dark:bg-sky-950/20",
+                        );
+                        explanationBox.classList.add(
+                            "bg-green-50",
+                            "dark:bg-green-950/20",
+                        );
+                        explanationText.classList.remove(
+                            "text-sky-900",
+                            "dark:text-sky-300",
+                        );
+                        explanationText.classList.add(
+                            "text-green-900",
+                            "dark:text-green-300",
+                        );
+                    },
+                },
+            ];
+
+            function resetSimulation() {
+                memoryUsage = 0;
+                messageQueue = [];
+                externalStorage = [];
+                workingContext = [];
+                currentStep = 0;
+
+                updateMemoryUI();
+                chatHistory.innerHTML = "";
+                workingContextContent.innerHTML = "";
+                externalStorageContent.innerHTML = "";
+                consoleLog.innerHTML = "";
+
+                explanationBox.classList.remove(
+                    "bg-green-50",
+                    "dark:bg-green-950/20",
+                );
+                explanationBox.classList.add("bg-sky-50", "dark:bg-sky-950/20");
+                explanationText.classList.remove(
+                    "text-green-900",
+                    "dark:text-green-300",
+                );
+                explanationText.classList.add(
+                    "text-sky-900",
+                    "dark:text-sky-300",
+                );
+                explanationText.innerText =
+                    "Click 'Start Simulation' to begin the guided tour.";
+
+                nextStepBtn.innerText = "Start Simulation";
+                nextStepBtn.disabled = false;
+            }
+
+            async function runNextStep() {
+                if (currentStep >= simulationSteps.length) {
+                    nextStepBtn.disabled = true;
+                    return;
+                }
+
+                nextStepBtn.disabled = true;
+                const step = simulationSteps[currentStep];
+
+                explanationBox.style.opacity = "0";
+                await sleep(300);
+                explanationText.innerHTML = step.explanation; // Use innerHTML to render emoji
+                explanationBox.style.opacity = "1";
+
+                await step.action();
+
+                currentStep++;
+
+                if (currentStep < simulationSteps.length) {
+                    nextStepBtn.innerText = "Next Step";
+                    nextStepBtn.disabled = false;
+                } else {
+                    nextStepBtn.innerText = "Simulation Complete";
+                    nextStepBtn.disabled = true;
+                }
+            }
+
+            // --- Event Listeners ---
+            nextStepBtn.addEventListener("click", runNextStep);
+            resetBtn.addEventListener("click", resetSimulation);
+
+            // --- Initialize ---
+            // Optional: Auto-detect dark mode
+            if (
+                window.matchMedia &&
+                window.matchMedia("(prefers-color-scheme: dark)").matches
+            ) {
+                document.documentElement.classList.add("dark");
+            }
+            resetSimulation();
+        </script>
+    </body>
+</html>
